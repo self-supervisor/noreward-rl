@@ -1,5 +1,4 @@
 from __future__ import print_function
-import wandb
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
@@ -307,8 +306,6 @@ class A3C(object):
         self.unsup = unsupType is not None
         self.envWrap = envWrap
         self.env = env
-        wandb.init(project="pathakicml2017")
-        wandb.config.update({"unsupType": unsupType})
 
         predictor = None
         numaction = env.action_space.n
@@ -434,16 +431,6 @@ class A3C(object):
                 tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
                 tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
 
-                import ipdb
-
-                ipdb.set_trace()
-                # wandb
-                wandb.log({"model/policy_loss": pi_loss})
-                wandb.log({"model/value_loss": vf_loss})
-                wandb.log({"model/entropy": entropy})
-                wandb.log({"model/state": pi.x})
-                wandb.log({"model/grad_global_norm": tf.global_norm(grads)})
-                wandb.log({"model/var_global_norm": tf.global_norm(pi.var_list)})
                 if self.unsup:
                     tf.summary.scalar("model/predloss", self.predloss)
                     if "action" in unsupType:
@@ -455,19 +442,8 @@ class A3C(object):
                     tf.summary.scalar(
                         "model/predvar_global_norm", tf.global_norm(predictor.var_list)
                     )
-                    # wandb
-                    wandb.log({"model/predloss": self.predloss})
-                    if "action" in unsupType:
-                        wandb.log({"model/inv_loss": predictor.invloss})
-                        wandb.log({"model/forward_loss": predictor.forwardloss})
-                    wandb.log({"model/predgrad_global_norm": tf.global_norm(predgrads)})
-                    wandb.log(
-                        {
-                            "model/predvar_global_norm": tf.global_norm(
-                                predictor.var_list
-                            )
-                        }
-                    )
+                    tf.summary.scalar("model/sigma", predictor.f_sigma_mean)
+                    tf.summary.scalar("model/mean", predictor.f_mean_mean)
                 self.summary_op = tf.summary.merge_all()
             else:
                 tf.scalar_summary("model/policy_loss", pi_loss)
@@ -477,13 +453,6 @@ class A3C(object):
                 tf.scalar_summary("model/grad_global_norm", tf.global_norm(grads))
                 tf.scalar_summary("model/var_global_norm", tf.global_norm(pi.var_list))
 
-                # wandb
-                wandb.log({"model/policy_loss": pi_loss})
-                wandb.log({"model/value_loss": vf_loss})
-                wandb.log({"model/entropy": entropy})
-                wandb.log({"model/state": pi.x})
-                wandb.log({"model/grad_global_norm": tf.global_norm(grads)})
-                wandb.log({"model/var_global_norm": tf.global_norm(pi.var_list)})
                 if self.unsup:
                     tf.scalar_summary("model/predloss", self.predloss)
                     if "action" in unsupType:
@@ -496,19 +465,6 @@ class A3C(object):
                         "model/predvar_global_norm", tf.global_norm(predictor.var_list)
                     )
 
-                    # wandb
-                    wandb.log({"model/predloss": self.predloss})
-                    if "action" in unsupType:
-                        wandb.log({"model/inv_loss": predictor.invloss})
-                        wandb.log({"model/forward_loss": predictor.forwardloss})
-                    wandb.log({"model/predgrad_global_norm": tf.global_norm(predgrads)})
-                    wandb.log(
-                        {
-                            "model/predvar_global_norm": tf.global_norm(
-                                predictor.var_list
-                            )
-                        }
-                    )
                 self.summary_op = tf.merge_all_summaries()
 
             # clip gradients
@@ -606,7 +562,7 @@ class A3C(object):
         }
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
-            feed_dict[self.local_ap_network.s1] = batch.si[:-1]
+            feed_dict[self.local_ap_network.s1_mean] = batch.si[:-1]
             feed_dict[self.local_ap_network.s2] = batch.si[1:]
             feed_dict[self.local_ap_network.asample] = batch.a
 
