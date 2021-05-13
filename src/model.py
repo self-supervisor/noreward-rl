@@ -407,16 +407,14 @@ class StatePredictor(object):
         # input: s1,s2: : [None, h, w, ch] (usually ch=1 or 4)
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
-        self.s1_mean = phi1_mean = tf.placeholder(tf.float32, input_shape)
-        self.s1_sigma = phi1_sigma = tf.identity(self.s1_mean)
+        self.s1 = phi1 = tf.placeholder(tf.float32, input_shape)
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
         self.stateAenc = unsupType == "stateAenc"
 
         # feature encoding: phi1: [None, LEN]
         if designHead == "universe":
-            phi1_mean = universeHead(phi1_mean, "mean")
-            phi1_sigma = universeHead(phi1_sigma, "sigma")
+            phi1 = universeHead(phi1, "mean")
             if self.stateAenc:
                 with tf.variable_scope(tf.get_variable_scope(), reuse=True):
                     phi2_aenc = universeHead(phi2)
@@ -432,48 +430,39 @@ class StatePredictor(object):
         # forward model: f(phi1,asample) -> phi2
         # Note: no backprop to asample of policy: it is treated as fixed for predictor training
 
-        f_mean = tf.concat(1, [phi1_mean, asample])
-        f_mean = tf.nn.relu(
+        f1 = tf.concat(1, [phi1, asample])
+        f1 = tf.nn.relu(
             linear(
-                f_mean,
-                phi1_mean.get_shape()[1].value,
-                "f1_mean",
+                f1,
+                phi1.get_shape()[1].value,
+                "f1",
                 normalized_columns_initializer(0.01),
             )
         )
 
-        f_sigma = tf.concat(1, [phi1_sigma, asample])
-        f_sigma = tf.nn.relu(
-            linear(
-                f_sigma,
-                phi1_sigma.get_shape()[1].value,
-                "f1_sigma",
-                normalized_columns_initializer(0.01),
-            )
-        )
-
+        f1_sigma = tf.identity(f1)
+        f1_mean = tf.identiy(f1)
         if "tile" in designHead:
-            f_mean = inverseUniverseHead(f_mean, input_shape, "mean", nConvs=2)
-            f_sigma = inverseUniverseHead(f_sigma, input_shape, "sigma", nConvs=2)
+            f_mean = inverseUniverseHead(f1_mean, input_shape, "mean", nConvs=2)
+            f_sigma = inverseUniverseHead(f1_sigma, input_shape, "sigma", nConvs=2)
         else:
-            f_mean = inverseUniverseHead(f_mean, input_shape, "mean")
-            f_sigma = inverseUniverseHead(f_sigma, input_shape, "sigma")
+            f_mean = inverseUniverseHead(f1_mean, input_shape, "mean")
+            f_sigma = inverseUniverseHead(f1_sigma, input_shape, "sigma")
         self.mse = tf.square(tf.subtract(f_mean, phi2))
         self.f_mean = tf.identity(f_mean)
         self.f_sigma = tf.identity(f_sigma)
         self.f_mean_mean = tf.reduce_mean(f_mean)
         self.f_sigma_mean = tf.reduce_mean(f_sigma)
-        self.bonus = tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
-
         self.forwardloss = 0.5 * tf.reduce_mean(
             (tf.exp(-self.f_sigma) * self.mse) + self.f_sigma,
             name="forwardloss",
         )
+        self.bonus = tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
         if self.stateAenc:
             self.aencBonus = 0.5 * tf.reduce_mean(
                 tf.square(tf.subtract(phi1, phi2_aenc)), name="aencBonus"
             )
-        self.predstate = phi1_mean
+        self.predstate = phi1
 
         # variable list
         self.var_list = tf.get_collection(
@@ -487,7 +476,7 @@ class StatePredictor(object):
             output: s2: [h, w, ch]
         """
         sess = tf.get_default_session()
-        return sess.run(self.predstate, {self.s1_mean: [s1], self.asample: [asample]})[
+        return sess.run(self.predstate, {self.s1: [s1], self.asample: [asample]})[
             0, :
         ]
 
@@ -502,7 +491,7 @@ class StatePredictor(object):
         error = sess.run(
             bonus,
             {
-                self.s1_mean: [s1],
+                self.s1: [s1],
                 self.s2: [s2],
                 self.asample: [asample],
             },

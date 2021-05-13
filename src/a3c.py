@@ -562,7 +562,7 @@ class A3C(object):
         }
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
-            feed_dict[self.local_ap_network.s1_mean] = batch.si[:-1]
+            feed_dict[self.local_ap_network.s1] = batch.si[:-1]
             feed_dict[self.local_ap_network.s2] = batch.si[1:]
             feed_dict[self.local_ap_network.asample] = batch.a
 
