@@ -306,7 +306,7 @@ class A3C(object):
         self.unsup = unsupType is not None
         self.envWrap = envWrap
         self.env = env
-
+        assert self.unsup != False
         predictor = None
         numaction = env.action_space.n
         worker_device = "/job:worker/task:{}/cpu:0".format(task)

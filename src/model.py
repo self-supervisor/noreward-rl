@@ -441,7 +441,7 @@ class StatePredictor(object):
         )
 
         f1_sigma = tf.identity(f1)
-        f1_mean = tf.identiy(f1)
+        f1_mean = tf.identity(f1)
         if "tile" in designHead:
             f_mean = inverseUniverseHead(f1_mean, input_shape, "mean", nConvs=2)
             f_sigma = inverseUniverseHead(f1_sigma, input_shape, "sigma", nConvs=2)
