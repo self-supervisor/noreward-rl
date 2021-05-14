@@ -453,11 +453,15 @@ class StatePredictor(object):
         self.f_sigma = tf.identity(f_sigma)
         self.f_mean_mean = tf.reduce_mean(f_mean)
         self.f_sigma_mean = tf.reduce_mean(f_sigma)
+        self.bonus = 0.5 + tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
         self.forwardloss = 0.5 * tf.reduce_mean(
             (tf.exp(-self.f_sigma) * self.mse) + self.f_sigma,
             name="forwardloss",
         )
+<<<<<<< HEAD
         self.bonus = 0.001 * tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
+=======
+>>>>>>> 6b6ac6b8365b00ce26edaf6d438e10ac4a509994
         if self.stateAenc:
             self.aencBonus = 0.5 * tf.reduce_mean(
                 tf.square(tf.subtract(phi1, phi2_aenc)), name="aencBonus"
@@ -476,9 +480,7 @@ class StatePredictor(object):
             output: s2: [h, w, ch]
         """
         sess = tf.get_default_session()
-        return sess.run(self.predstate, {self.s1: [s1], self.asample: [asample]})[
-            0, :
-        ]
+        return sess.run(self.predstate, {self.s1: [s1], self.asample: [asample]})[0, :]
 
     def pred_bonus(self, s1, s2, asample):
         """
