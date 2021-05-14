@@ -408,7 +408,7 @@ class StatePredictor(object):
         # asample: 1-hot encoding of sampled action from policy: [None, ac_space]
         input_shape = [None] + list(ob_space)
         self.s1_mean = phi1_mean = tf.placeholder(tf.float32, input_shape)
-        self.s1_sigma = phi1_sigma = tf.identity(self.s1_mean)
+        self.s1_sigma = phi1_sigma = tf.placeholder(tf.float32, input_shape)
         self.s2 = phi2 = tf.placeholder(tf.float32, input_shape)
         self.asample = asample = tf.placeholder(tf.float32, [None, ac_space])
         self.stateAenc = unsupType == "stateAenc"
@@ -463,12 +463,12 @@ class StatePredictor(object):
         self.f_sigma = tf.identity(f_sigma)
         self.f_mean_mean = tf.reduce_mean(f_mean)
         self.f_sigma_mean = tf.reduce_mean(f_sigma)
-        self.bonus = tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
 
         self.forwardloss = 0.5 * tf.reduce_mean(
             (tf.exp(-self.f_sigma) * self.mse) + self.f_sigma,
             name="forwardloss",
         )
+        self.bonus = tf.clip_by_value(tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus"), 0, 100)
         if self.stateAenc:
             self.aencBonus = 0.5 * tf.reduce_mean(
                 tf.square(tf.subtract(phi1, phi2_aenc)), name="aencBonus"
@@ -480,18 +480,18 @@ class StatePredictor(object):
             tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name
         )
 
-    def pred_state(self, s1, asample):
+    def pred_state(self, s1_mean, s1_sigma, asample):
         """
         returns state predicted by forward model
             input: s1: [h, w, ch], asample: [ac_space] 1-hot encoding
             output: s2: [h, w, ch]
         """
         sess = tf.get_default_session()
-        return sess.run(self.predstate, {self.s1_mean: [s1], self.asample: [asample]})[
+        return sess.run(self.predstate, {self.s1_mean: [s1_mean], self.s1_sigma: [s1_sigma], self.asample: [asample]})[
             0, :
         ]
 
-    def pred_bonus(self, s1, s2, asample):
+    def pred_bonus(self, s1_mean, s1_sigma, s2, asample):
         """
         returns bonus predicted by forward model
             input: s1,s2: [h, w, ch], asample: [ac_space] 1-hot encoding
@@ -502,7 +502,8 @@ class StatePredictor(object):
         error = sess.run(
             bonus,
             {
-                self.s1_mean: [s1],
+                self.s1_mean: [s1_mean],
+                self.s1_sigma: [s1_sigma],
                 self.s2: [s2],
                 self.asample: [asample],
             },

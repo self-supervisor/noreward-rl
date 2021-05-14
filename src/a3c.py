@@ -212,7 +212,7 @@ def env_runner(
 
             curr_tuple = [last_state, action, reward, value_, terminal, last_features]
             if predictor is not None:
-                bonus = predictor.pred_bonus(last_state, state, action)
+                bonus = predictor.pred_bonus(last_state, state, state, action)
                 curr_tuple += [bonus, state]
                 life_bonus += bonus
                 ep_bonus += bonus
@@ -563,6 +563,7 @@ class A3C(object):
         if self.unsup:
             feed_dict[self.local_network.x] = batch.si[:-1]
             feed_dict[self.local_ap_network.s1_mean] = batch.si[:-1]
+            feed_dict[self.local_ap_network.s1_sigma] = batch.si[:-1]
             feed_dict[self.local_ap_network.s2] = batch.si[1:]
             feed_dict[self.local_ap_network.asample] = batch.a
 
