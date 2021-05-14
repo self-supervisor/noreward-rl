@@ -457,7 +457,7 @@ class StatePredictor(object):
             (tf.exp(-self.f_sigma) * self.mse) + self.f_sigma,
             name="forwardloss",
         )
-        self.bonus = tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
+        self.bonus = 0.001 * tf.reduce_mean(self.mse - tf.exp(self.f_sigma), name="bonus")
         if self.stateAenc:
             self.aencBonus = 0.5 * tf.reduce_mean(
                 tf.square(tf.subtract(phi1, phi2_aenc)), name="aencBonus"
